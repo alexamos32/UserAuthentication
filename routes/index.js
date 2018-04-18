@@ -19,12 +19,7 @@ router.get('/logout', (req, res, next) => {
 });
 
 //GET /profile
-router.get('/profile', function(req, res, next){
-  if (!req.session.userId) {
-    var err = new Error('You must log in to view this page');
-    err.status = 403;
-    return next(err);
-  }
+router.get('/profile', mid.requiresLogin, function(req, res, next){
   User.findById(req.session.userId)
       .exec(function (error, user) {
         if (error) {
