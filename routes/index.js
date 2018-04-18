@@ -1,9 +1,71 @@
 var express = require('express');
 var router = express.Router();
 var User = require('../models/user')
+var mid = require('../middleware');
+
+//GET /logout
+router.get('/logout', (req, res, next) => {
+  //if a session exists, delete it
+  if (req.session) {
+    req.session.destroy(function (err) {
+      if (err) {
+        return next(err);
+      }
+      else {
+        return res.redirect('/');
+      }
+    });
+  }
+});
+
+//GET /profile
+router.get('/profile', function(req, res, next){
+  if (!req.session.userId) {
+    var err = new Error('You must log in to view this page');
+    err.status = 403;
+    return next(err);
+  }
+  User.findById(req.session.userId)
+      .exec(function (error, user) {
+        if (error) {
+          return next(error);
+        }
+        else {
+          return res.render('profile', { title: 'Profile', name: user.name, favorite: user.favoriteBook });
+        }
+      });
+});
+
+//GET /login
+router.get('/login', mid.loggedOut, (req, res, next) => {
+  return res.render('login', {title: 'Log In'});
+});
+
+//POST /login
+router.post('/login', (req, res, next) => {
+  if (req.body.email && req.body.password) {
+    User.authenticate(req.body.email, req.body.password, function (error, user){
+      if(error || !user) {
+        var err = new Error('Incorrect email or password.');
+        err.status = 401;
+        return next(err);
+      }
+      else {
+        req.session.userId = user._id;
+        return res.redirect('/profile');
+      }
+    });
+  }
+  else {
+    var err = new Error('Email and password are required.');
+    err.status = 401;
+    return next(err);
+  }
+});
+
 
 // GET /register
-router.get('/register', (req, res, next) => {
+router.get('/register', mid.loggedOut, (req, res, next) => {
   res.render('register', {title: 'Sign Up'});
 });
 
